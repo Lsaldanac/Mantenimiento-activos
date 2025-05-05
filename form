@@ -1,0 +1,55 @@
+import streamlit as st
+from fpdf import FPDF
+from datetime import datetime
+import os
+
+st.set_page_config(page_title="Mantenimiento de Tableros Eléctricos", layout="centered")
+st.title("Formulario de Mantenimiento de Tableros Eléctricos")
+
+# --- FORMULARIO ---
+tecnico = st.text_input("Nombre del técnico")
+fecha = st.date_input("Fecha del mantenimiento", value=datetime.today())
+edificio = st.text_input("Nombre del edificio")
+ubicacion = st.text_input("Ubicación del tablero (piso, sala, etc.)")
+estado = st.selectbox("Estado general del tablero", ["Bueno", "Regular", "Crítico"])
+observaciones = st.text_area("Observaciones")
+imagenes = st.file_uploader("Subir imágenes del tablero", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+
+# --- GENERAR PDF ---
+def generar_pdf(tecnico, fecha, edificio, ubicacion, estado, observaciones, imagenes):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, txt="Informe de Mantenimiento de Tablero Eléctrico", ln=True, align="C")
+    pdf.ln(10)
+
+    pdf.cell(200, 10, txt=f"Técnico: {tecnico}", ln=True)
+    pdf.cell(200, 10, txt=f"Fecha: {fecha.strftime('%d-%m-%Y')}", ln=True)
+    pdf.cell(200, 10, txt=f"Edificio: {edificio}", ln=True)
+    pdf.cell(200, 10, txt=f"Ubicación: {ubicacion}", ln=True)
+    pdf.cell(200, 10, txt=f"Estado del tablero: {estado}", ln=True)
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, txt=f"Observaciones:\n{observaciones}")
+    pdf.ln(5)
+
+    for img in imagenes:
+        img_path = os.path.join("temp_" + img.name)
+        with open(img_path, "wb") as f:
+            f.write(img.getbuffer())
+        pdf.image(img_path, w=100)
+        os.remove(img_path)
+
+    pdf_output = f"informe_mantenimiento_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf.output(pdf_output)
+    return pdf_output
+
+# --- BOTÓN ---
+if st.button("Generar Informe PDF"):
+    if not tecnico or not edificio or not ubicacion:
+        st.error("Por favor, completa todos los campos obligatorios.")
+    else:
+        pdf_file = generar_pdf(tecnico, fecha, edificio, ubicacion, estado, observaciones, imagenes)
+        with open(pdf_file, "rb") as f:
+            st.download_button("Descargar Informe PDF", f, file_name=pdf_file)
+        os.remove(pdf_file)
